@@ -1,0 +1,51 @@
+# Territory-name conventions for the CIMI analysis. Single source of truth;
+# scripts/ti_names.py loads this file. Never edit a mapping only in code.
+#
+# Canonical labels are the normalised CIMI spellings: UPPERCASE, no accents,
+# hyphens and apostrophes as spaces. The normalisation rules live in
+# scripts/ti_names.py (norm_ti); this file holds name data only.
+#
+# Names reviewed against FUNAI terrai_nom (tis_poligonais, retrieved 2026-11-04)
+# on 2026-11-11. 25 Kaiowa territories in the FUNAI inventory.
+
+# The five territories chosen for the later MapBiomas and Sentinel-1 analyses.
+focus_territories:
+  - ARROIO KORA
+  - GUYRAROKA
+  - IGUATEMIPEGUA I
+  - JATAYVARY
+  - TAQUARA
+
+# Normalised CIMI spelling variants -> canonical CIMI label.
+cimi_variants:
+  DOURADOS AMAMBAIPEGUA: DOURADOS AMAMBAIPEGUA I
+  DOURADOS AMAMBAI PEGUA II: DOURADOS AMAMBAIPEGUA II
+  APYKAI: APIKAY
+  NANDE RU MARANGATU: NHANDERU MARANGATU
+  TEKOHA ARATIKUTY: ARATIKUTY
+  PANAMBI: PANAMBI (LAGOA RICA)
+  PANAMBI LAGOA RICA: PANAMBI (LAGOA RICA)
+  LARANJEIRA NHANDERU E BOQUEIRAO (BRI LHANTEPEGUA): LARANJEIRA NHANDERU E BOQUEIRAO (BRILHANTEPEGUA)
+
+# FUNAI terrai_nom (after norm_ti) -> canonical CIMI label. FUNAI names absent
+# here are either already identical to the canonical label or have no CIMI
+# counterpart. Unmapped CIMI-only names stay as their normalised spelling.
+funai_to_cimi:
+  APYKAI: APIKAY
+  NANDE RU MARANGATU: NHANDERU MARANGATU
+  PANAMBI LAGOA RICA: PANAMBI (LAGOA RICA)
+  YPOI/TRIUNFO: YPOI E TRIUNFO
+  JATAYVARI: JATAYVARY
+
+# Known unresolved questions, kept visible on purpose. Do not delete silently.
+notes:
+  - "DOURADOS AMAMBAIPEGUA II has no FUNAI polygon in the Kaiowa inventory; kept
+    as its own canonical label until the FUNAI layer question is settled."
+  - "PIRAJUI -> PASSO PIRAJU was rejected on 2026-11-11: FUNAI Pirajui is Guarani
+    Nhandeva, Paranhos, Regularizada; CIMI's PASSO PIRAJU is Guarani Kaiowá in
+    the Bacia Dourados-Amambaipeguá regularisation process, and CIMI 2025
+    writes it as 'Dourados-Amambaipeguá III - Passo Piraju/Ñu Porã'. PASSO
+    PIRAJU stays a CIMI-only label with no FUNAI polygon."
+  - "CIMI-only names (campamentos, tekoha retomadas such as NU VERA, YVU VERA,
+    KURUSU AMBA, LARANJEIRA NHANDERU) have no FUNAI polygon by design: FUNAI
+    lists declared territories, CIMI also reports conflicts on retomadas."

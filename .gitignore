@@ -1,0 +1,37 @@
+# virtual envs
+.venv/
+*-venv/
+venv/
+env/
+ENV/
+virtualenv/
+.virtualenv/
+venv-*/
+*.venv/
+*.pyvenv/
+
+# data transfers in and out are reproducible downloads; keep only notes
+data/raw/*
+!data/raw/README.md
+# hand-authored document registry, not a download
+!data/raw/documents_manual.csv
+# cached satellite stacks; regenerable from GEE
+data/cache/
+
+# PDF text extractions; regenerable with pdftext.py
+data/interim/*
+!data/interim/README.md
+
+# generated tables; keep the notes
+data/derived/*
+!data/derived/README.md
+
+__pycache__/
+*.pyc
+
+# notebook cruft
+.ipynb_checkpoints/
+*:Zone.Identifier
+
+# OS cruft
+.DS_Store
