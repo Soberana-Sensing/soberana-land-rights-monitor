@@ -38,4 +38,14 @@ Regenerate everything, in order:
 ./.cimi-venv/bin/python3 scripts/plot_conflict_bubble_map_all.py
 ./.cimi-venv/bin/python3 scripts/plot_occupation_lollipop.py
 ./.cimi-venv/bin/python3 scripts/plot_territory_mention_timelines.py
+
+# The ten MapBiomas land-cover CSVs, one territory per run, in the
+# focus_territories order of config/ti_names.yaml. These call Earth Engine;
+# drop --refresh to reuse an existing CSV for a territory.
+for ti in "ARROIO KORA" "GUYRAROKA" "IGUATEMIPEGUA I" "JATAYVARY" "TAQUARA" \
+          "NHANDERU MARANGATU" "PANAMBI (LAGOA RICA)" "SOMBRERITO" \
+          "POTRERO GUASU" "DOURADOS AMAMBAIPEGUA I"; do
+  ./.cimi-venv/bin/python3 scripts/plot_mapbiomas_landcover.py --ti "$ti"
+done
+./.cimi-venv/bin/python3 scripts/plot_mapbiomas_grid.py
 ```

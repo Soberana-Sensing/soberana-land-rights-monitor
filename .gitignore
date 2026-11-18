@@ -15,12 +15,6 @@ venv-*/
 # to be spelled out: a bare "data/raw/*" matches nothing under cimi/.
 cimi/data/raw/*
 !cimi/data/raw/README.md
-# cached satellite stacks; regenerable from GEE
-cimi/data/cache/
-
-# PDF text extractions; regenerable with pdftext.py
-cimi/data/interim/*
-!cimi/data/interim/README.md
 
 # generated tables; the cimi project tracks the small derived CSVs and the
 # figure outputs on purpose, so nothing under cimi/data/derived/ is ignored

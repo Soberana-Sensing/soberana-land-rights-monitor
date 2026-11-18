@@ -5,8 +5,9 @@
 # hyphens and apostrophes as spaces. The normalisation rules live in
 # scripts/ti_names.py (norm_ti); this file holds name data only.
 #
-# Names reviewed against FUNAI terrai_nom (tis_poligonais, retrieved 2026-11-04)
-# on 2026-11-11. 25 Kaiowa territories in the FUNAI inventory.
+# Names checked against the FUNAI tis_poligonais layer on 2026-11-11; the
+# inventory now builds from the 2026-11-12 download. 25 Kaiowa territories in
+# the FUNAI inventory.
 
 # The territories chosen for the later MapBiomas and Sentinel-1 analyses: all
 # ten territories in the CIMI occupation-share table. Eight have polygons FUNAI

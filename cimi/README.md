@@ -36,7 +36,7 @@ needs to change, change the YAML, not the code.
 1. Create a conda environment (install miniconda3 if you don't have it):
 
    ```bash
-   conda create -p ./.cimi-venv
+   conda create -p ./.cimi-venv python=3.12
    ```
 
 2. Install the pinned dependencies:
@@ -93,8 +93,23 @@ Guarani Kaiowá plus the focus territories listed in `config/ti_names.yaml`
 (some attributed to the Nhandeva or the Guaraní), and writes
 1. `data/derived/funai_territorial_inventory_ms.csv`, one row per territory
    with the official area, the stage reached, its date and the `TI_CLEAN`
-   name, and
-2. `data/derived/funai_kaiowa_ms_clipped.geojson`, the same rows with geometry.
+   name,
+2. `data/derived/funai_kaiowa_ms_clipped.geojson`, the same rows with geometry, and
+3. `data/derived/funai_ms_territories_clipped.geojson`, every distinct territory
+   name in the download (46), with geometry. Only the all-label bubble map reads
+   it, to anchor labels that are not Kaiowá.
+
+Each row carries every stage date FUNAI publishes (`data_delimitada`,
+`data_declarada`, `data_homologada`, `data_regularizada`) together with the
+legal act behind it (`tit_*`). `defined_date` stays the earliest of those four
+dates with `defined_stage` naming which one it is; the MapBiomas figures use
+the full set of dates instead. A stage without a date means FUNAI records no
+act for it, not that the territory skipped the stage: Ñande Ru Marangatu has a
+declaration and a ratification but no delimitation, and Potrero Guaçu only a
+declaration. The download does carry `data_em_estudo`, deliberately left out
+of the inventory: it is empty for 30 of the 50 features and, on Sombrerito and
+Jatayvari, holds a 2012-11-20 "Portaria Migração" later than their own
+delimitation.
 No other script re-reads the FUNAI download; the GAUL boundary is only the map
 backdrop, and no script clips to it.
 
@@ -210,10 +225,13 @@ Land cover inside one focus territory, 1985-2025, from MapBiomas Collection 11
 (30 m annual) via Earth Engine, as a stacked-area chart in hectares. The 33
 classes collapse into six groups (native vegetation, pasture, agriculture,
 mosaic of uses, forest plantation, other non-vegetated) plus water and a
-non-observed bucket. The title carries the territory area and the community's
-effective occupation from the CIMI shares, and a red dashed line marks the FUNAI
-demarcation date (`defined_date`, the first legal act, from the focus
-inventory). `--ti` takes any `TI_CLEAN` name from
+non-observed bucket. The title carries the current FUNAI stage and the
+community's effective occupation from the CIMI shares, plus the territory area.
+Each FUNAI legal act recorded in the focus inventory gets its own dashed
+vertical line, coloured by stage: delimitation (indigo), declaration (amber),
+ratification (purple). A territory with no date for a stage gets no line for
+it, and no stage text is written inside the plot; a second legend names the
+line colours. `--ti` takes any `TI_CLEAN` name from
 `funai_focus_territories.geojson`; `--refresh` requeries GEE, otherwise the run
 reuses the cache CSV `data/derived/mapbiomas_landcover_<ti>.csv`. Writes
 `out/figures/<TI>/mapbiomas_landcover_1985_2025.*` (PNG at 300 dpi and SVG).
@@ -225,10 +243,11 @@ reuses the cache CSV `data/derived/mapbiomas_landcover_<ti>.csv`. Writes
 All ten focus territories on one figure: a 5x2 grid of the stacked-area land
 cover charts, built from the per-territory cache CSVs (no Earth Engine call).
 Panels follow the `focus_territories` order in `config/ti_names.yaml` and keep
-the per-territory style of `plot_mapbiomas_landcover.py`, including the FUNAI
-demarcation line; one shared legend at the bottom. Run it after the ten
-`plot_mapbiomas_landcover.py` runs above. Writes
-`out/figures/mapbiomas_landcover_grid_5x2.*` (PNG at 300 dpi and SVG).
+the per-territory style of `plot_mapbiomas_landcover.py`, including the
+coloured legal-act lines, with each panel title naming its current stage. Two
+shared legends above the grid: land-cover classes, and the three legal-act
+line colours. Run it after the ten `plot_mapbiomas_landcover.py` runs above.
+Writes `out/figures/mapbiomas_landcover_grid_5x2.*` (PNG at 300 dpi and SVG).
 
 ```bash
 ./.cimi-venv/bin/python3 scripts/extract_territory_mentions.py
@@ -287,7 +306,7 @@ territory against any subset of the log. `--ti` restricts the run. Writes
 | `scripts/plot_occupation_lollipop.py` | Figure: occupied share per territory. Input CSV is hand-copied from the CIMI 2020 report. |
 | `scripts/plot_conflict_wordcloud.py` | Figure + counts: conflict-type-minor labels. |
 | `scripts/plot_funai_map.py` | Figure: territories over the state, focus territories highlighted. |
-| `scripts/ms_map_base.py` | Shared map base for the two map figures: boundary, polygon layers, colours, label offsets, representative-point anchor. No figure of its own. |
+| `scripts/ms_map_base.py` | Shared map base for the three map figures: boundary, polygon layers, colours, label offsets, representative-point anchor. No figure of its own. |
 | `scripts/plot_conflict_bubble_map.py` | Figure: bubble map per focus territory, from Chapter I cases (`--source cases`) or whole-report mentions (`--source mentions`). |
 | `scripts/plot_conflict_bubble_map_all.py` | Figure: bubble map of all 46 heatmap labels, numbered and keyed, the 26 without a polygon listed below. |
 | `scripts/plot_mapbiomas_landcover.py` | Figure + cache CSV: MapBiomas C11 land-cover share per group, 1985-2025, one territory per run. |
@@ -343,6 +362,6 @@ Raw inputs, both under `data/raw/` and git-ignored: the FUNAI WFS download
 `FUNAI_tis_portarias_poligonais_MS_2026-11-12.geojson` (read only by
 `build_funai_inventory.py`) and the MS state boundary
 `gaul_ms_boundary_2025.geojson` (used only as the map backdrop, loaded through
-`ms_map_base.py` by both map figures).
+`ms_map_base.py` by the three map figures).
 
 
