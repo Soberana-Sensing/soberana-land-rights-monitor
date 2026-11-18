@@ -113,7 +113,11 @@ def main() -> None:
             "uf_sigla", "municipio_nome", "funai_area_official_ha",
             "fase_ti", "modalidade_ti", "reestudo_ti", "source_category",
             "cr", "faixa_fronteira", "undadm_codigo", "undadm_nome", "undadm_sigla",
+            # Every stage date and its legal act: the plotted stage lines read these.
             "data_delimitada", "tit_delimitada",
+            "data_declarada", "tit_declarada",
+            "data_homologada", "tit_homologada",
+            "data_regularizada", "tit_regularizada",
             "defined_date", "defined_stage", "defined_document",
             "name_normalised", "TI_CLEAN", "area_inside_ms_ha"]
     kaiowa = kaiowa[cols + ["geometry"]]

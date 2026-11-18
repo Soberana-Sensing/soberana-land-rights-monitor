@@ -26,6 +26,7 @@ from pathlib import Path
 import ee
 import geopandas as gpd
 import matplotlib.pyplot as plt
+import matplotlib.lines as mlines
 import numpy as np
 import pandas as pd
 
@@ -73,6 +74,15 @@ LABELS = {
     "nonobserved": "Not observed",
 }
 GIDS = list(GROUPS)
+
+# FUNAI legal acts drawn as dashed vertical lines, one per stage and colour.
+# (stage key in the inventory column `data_<key>`, English label, colour). The
+# colours are dark and none matches a stack fill above.
+STAGE_LINES = [
+    ("delimitada", "delimitation", "#24479b"),
+    ("declarada", "declaration", "#e07b00"),
+    ("homologada", "ratification", "#8e2ba2"),
+]
 
 
 def slug(name: str) -> str:
@@ -141,28 +151,46 @@ def cimi_occupied(ti_clean: str) -> tuple[float, float, float, str] | None:
     return float(r["occupied_ha"]), float(r["area_ha"]), float(r["share_pct"]), str(r["year"])
 
 
-def add_demarcation_line(ax: plt.Axes, ti_clean: str) -> None:
-    """Red line at the FUNAI demarcation date (first legal act) from the inventory."""
+def legal_acts(ti_clean: str) -> tuple[list[tuple[str, str, str, int]], str]:
+    """Recorded FUNAI legal acts and the current stage, from the focus inventory.
+
+    Returns ([(english label, colour, act document, year), ...], fase_ti). One
+    entry per stage that has a date; a stage with no date has no line. The
+    current stage comes from `fase_ti`, never from the dates.
+    """
     inventory = ROOT / "data/derived/funai_focus_territories_inventory.csv"
     if not inventory.exists():
-        print("no focus inventory; no demarcation line")
-        return
+        print("no focus inventory; no legal-act lines")
+        return [], ""
     row = pd.read_csv(inventory).loc[lambda d: d["TI_CLEAN"] == ti_clean]
-    if row.empty or pd.isna(row["defined_date"].iloc[0]):
-        print(f"no FUNAI demarcation date for {ti_clean}; no line")
-        return
+    if row.empty:
+        print(f"{ti_clean} not in the focus inventory; no legal-act lines")
+        return [], ""
     r = row.iloc[0]
-    year = pd.to_datetime(r["defined_date"]).year
-    stage = ti_names.stage_en(r["defined_stage"])
+    acts = []
+    for stage, english, colour in STAGE_LINES:
+        date = pd.to_datetime(r.get(f"data_{stage}"), errors="coerce")
+        if pd.isna(date):
+            continue
+        document = r.get(f"tit_{stage}")
+        document = document if isinstance(document, str) else ""
+        acts.append((english, colour, document, int(date.year)))
     phase = r.get("fase_ti", "")
-    label = f"FUNAI {stage} {year}"
-    if isinstance(phase, str) and phase:
-        label += f" · current stage: {ti_names.stage_en(phase)}"
-    ax.axvline(year, color="black", linewidth=1.6, linestyle="--", zorder=5)
-    label_y = ax.get_ylim()[1] * 0.96
-    ax.text(year + 0.4, label_y, label, color="black",
-            fontsize=8, ha="left", va="top", fontweight="bold")
-    print(f"demarcation line: FUNAI {stage} {year}")
+    return acts, phase if isinstance(phase, str) else ""
+
+
+def add_stage_lines(ax: plt.Axes, ti_clean: str) -> tuple[list, str]:
+    """One coloured dashed line per recorded legal act. Returns legend handles."""
+    acts, phase = legal_acts(ti_clean)
+    handles = []
+    for english, colour, document, year in acts:
+        ax.axvline(year, color=colour, linewidth=1.8, linestyle=(0, (6, 3)), zorder=5)
+        handles.append(mlines.Line2D([], [], color=colour, linewidth=1.8,
+                                     linestyle=(0, (6, 3)), label=english))
+        print(f"legal act: {english} {year} ({document})")
+    if not acts:
+        print(f"no FUNAI legal-act date for {ti_clean}; no lines")
+    return handles, phase
 
 
 def plot(df: pd.DataFrame, ti_clean: str, out_dir: Path) -> None:
@@ -191,20 +219,31 @@ def plot(df: pd.DataFrame, ti_clean: str, out_dir: Path) -> None:
     ax.set_ylim(0, total.max())
     ax.set_ylabel("Hectares (ha)")
     ax.set_xlabel("Year")
-    ax.set_title(f"Land cover in {ti_clean.title()}\n"
+
+    stage_handles, phase = add_stage_lines(ax, ti_clean)
+    stage_text = f" (current stage: {ti_names.stage_en(phase)})" if phase else ""
+    ax.set_title(f"Land cover in {ti_clean.title()}{stage_text}\n"
                  "MapBiomas Collection 11, 1985-2025 (hectares inside the territory)"
                  + subtitle)
+
     handles, labels_ = ax.get_legend_handles_labels()
-    ax.legend(handles[::-1], labels_[::-1], loc="lower left", bbox_to_anchor=(1.02, 0.0),
-              title=f"Class ({YEARS[-1]})", fontsize=9)
-    add_demarcation_line(ax, ti_clean)
+    leg_class = ax.legend(handles[::-1], labels_[::-1], loc="upper left",
+                          bbox_to_anchor=(1.02, 1.0), title=f"Class ({YEARS[-1]})",
+                          fontsize=9)
+    leg_stage = None
+    if stage_handles:
+        ax.add_artist(leg_class)
+        leg_stage = ax.legend(handles=stage_handles, loc="lower left",
+                              bbox_to_anchor=(1.02, 0.0), title="FUNAI legal act",
+                              fontsize=9)
     ax.set_axisbelow(True)
     fig.tight_layout()
 
     out_dir.mkdir(parents=True, exist_ok=True)
+    extra = [leg for leg in (leg_class, leg_stage) if leg is not None]
     for ext in ("png", "svg"):
         fig.savefig(out_dir / f"mapbiomas_landcover_1985_2025.{ext}",
-                    dpi=300, bbox_inches="tight")
+                    dpi=300, bbox_inches="tight", bbox_extra_artists=extra)
     plt.close(fig)
     print(f"wrote {out_dir / 'mapbiomas_landcover_1985_2025.png'} and .svg")
 
