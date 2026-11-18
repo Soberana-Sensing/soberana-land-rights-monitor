@@ -1,7 +1,7 @@
 """Figure: word cloud of the CIMI conflict-type-minor labels, Kaiowá rows in MS.
 
-Input : data/derived/chapter1_conflicts.csv
-Output: out/figs/cimi_kaiowa_conflict_types_wordcloud.png/.svg
+Input : data/derived/cimi_kaiowa_ms_conflicts.csv    (prepare_kaiowa_dataset.py)
+Output: out/figures/cimi_kaiowa_conflict_types_wordcloud.png/.svg
         data/derived/cimi_kaiowa_conflict_type_counts.csv
 
 Rows hold several labels separated by ';'; every fragment is counted on its own.
@@ -21,9 +21,9 @@ import pandas as pd
 from wordcloud import WordCloud
 
 ROOT = Path(__file__).resolve().parents[1]
-CONFLICTS = ROOT / "data/derived/chapter1_conflicts.csv"
+CONFLICTS = ROOT / "data/derived/cimi_kaiowa_ms_conflicts.csv"
 COUNTS_OUT = ROOT / "data/derived/cimi_kaiowa_conflict_type_counts.csv"
-FIGS = ROOT / "out/figs"
+FIGS = ROOT / "out/figures"
 STEM = "cimi_kaiowa_conflict_types_wordcloud"
 
 
@@ -37,11 +37,11 @@ def main() -> None:
     if not CONFLICTS.exists():
         raise SystemExit(f"Missing input: {CONFLICTS}")
 
+    # the Kaiowá-MS filter and TI_CLEAN live in prepare_kaiowa_dataset.py; do not
+    # restate them here, or the two definitions drift apart
     df = pd.read_csv(CONFLICTS)
-    kaiowa = df.loc[df["povo"].astype("string").str.contains("kaio", case=False, na=False)]
-    kaiowa_ms = kaiowa.loc[kaiowa["state"].astype("string").str.contains("MS", case=False, na=False)]
 
-    labels = (kaiowa_ms["conflict-type-minor"]
+    labels = (df["conflict-type-minor"]
               .dropna()
               .str.split(";")
               .explode()

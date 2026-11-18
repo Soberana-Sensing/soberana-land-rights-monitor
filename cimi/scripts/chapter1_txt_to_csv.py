@@ -92,12 +92,35 @@ STATE_MAP = {
 }
 STATE_UFS = {uf.lower(): uf for uf in STATE_MAP.values()}
 
-# "BA - 2 Caso(s)" / "ACRE - 5 Casos"
-RE_STATE_INLINE = re.compile(
-    r"^(?P<name>[A-ZÀ-Ú][A-ZÀ-Ú .]{0,30}?)\s*[–—-]\s*(?P<n>\d+)\s*Caso(?:s|\(s\))?$"
+# State header, every shape the reports use:
+#   "BA - 2 Caso(s)"            classic, dash
+#   "MS – 2 casos"              lower-case count (2009)
+#   "MS\t 1 Caso"               tab instead of dash (2013, 2014)
+#   "MATO GROSSO DO SUL  –  9 CASOS"   upper-case count, double spaces (2021)
+#   "MATO GROSSO DO SUL (148)"         count in parentheses (2022+)
+#   "MATO GROSSO DO SUL (148) - Continuação"   continuation page (2022+)
+RE_STATE_HEADER_DASH = re.compile(
+    r"^(?P<name>[A-Za-zÀ-Úà-ú][A-Za-zÀ-Úà-ú .]{1,34}?)\s*[–—-]\s*(?P<n>\d{1,4})"
+    r"\s*(?:[Cc][Aa][Ss][Oo][Ss]?(?:\(s\))?)?(?:\s*[–—-]\s*(?P<tail>.*))?$"
 )
-# "158 Casos" / "1 Caso"
-RE_COUNT = re.compile(r"^(?P<n>\d+)\s*Caso(?:s|\(s\))?$")
+RE_STATE_HEADER_PAREN = re.compile(
+    r"^(?P<name>[A-Za-zÀ-Úà-ú][A-Za-zÀ-Úà-ú .]{1,34}?)\s*\(\s*(?P<n>\d{1,4})\s*\)"
+    r"(?:\s*[–—-]\s*(?P<tail>.*))?$"
+)
+# tab or plain spaces are only a state header when the count carries the word
+# "Caso(s)"; a bare "MS 4" is a table cell, not a header.
+RE_STATE_HEADER_CASO = re.compile(
+    r"^(?P<name>[A-Za-zÀ-Úà-ú][A-Za-zÀ-Úà-ú .]{1,34}?)\s+\t?\s*(?P<n>\d{1,4})"
+    r"\s*[Cc][Aa][Ss][Oo][Ss]?(?:\(s\))?\b(?:\s*[–—-]\s*(?P<tail>.*))?$"
+)
+# what may follow the count on a state header: victim counts and page markers
+RE_STATE_TAIL = re.compile(r"vitima|indigena|comunidade|continua|caso")
+RE_COUNT = re.compile(r"^(?P<n>\d+)\s*Caso(?:s)?(?:\(s\))?$", re.IGNORECASE)
+# A section total closes a section title block: capital "Casos", nothing else
+# after it. The case-insensitive form above also matches a table cell ("1 caso"
+# in the pending-status tables), and treating that as a section total would end
+# the section and silently drop every record that follows.
+RE_SECTION_COUNT = re.compile(r"^(?P<n>\d+)\s*Casos?$")
 # "Total de casos: 16"
 RE_TOTAL = re.compile(r"^Total de casos\s*:?\s*(?P<n>\d+)\s*$", re.IGNORECASE)
 # "TERRA INDIGENA: X"
@@ -163,23 +186,87 @@ def classify_label(label):
     return "other"
 
 
+# Section banners are wrapped over two or three lines from 2021 on, and the first
+# fragment is the only part that reliably appears on one line, so a line counts
+# when it is a prefix of the banner or the banner plus its tail.
+BANNER = {
+    "territorial": "conflitos relativos a direitos territoriais",
+    "invasao": (
+        "invasoes possessorias, exploracao ilegal de recursos naturais "
+        "e danos diversos ao patrimonio"
+    ),
+    "omissao": "omissao e morosidade na regularizacao de terras",
+}
+# a banner line may also carry the printed page number, tab-separated or not
+RE_BANNER_TAIL = re.compile(r"[\s.]+\d{1,4}$")
+
+
 def match_section(line):
-    """Chapter I section key for a title-ish line, else None."""
+    """Chapter I section key for a title-ish line, else None.
+
+    Only a standalone heading counts, and the seed words must be followed by
+    nothing or by the rest of the printed banner. Two failure modes this rules
+    out: CIMI's case-type labels repeat the same phrases ("Omissão e morosidade
+    na demarcação da TI", "Invasões possessórias, exploração ilegal de
+    recursos") and would flip the section mid-record, and lower-case running
+    text can start with the same words.
+    """
     if len(line) > 150 or ":" in line or re.search(r"\.{3,}", line):
         return None
-    key = fold(line)
-    if "conflito" in key and "territoria" in key:
-        return "territorial"
-    if "invas" in key and ("possessor" in key or "posse" in key):
-        return "invasao"
-    if "omiss" in key and "morosid" in key:
-        return "omissao"
+    stripped = line.strip()
+    if not stripped or not stripped[0].isupper():
+        return None
+    key = re.sub(r"\s+", " ", fold(stripped))
+    key = RE_BANNER_TAIL.sub("", key).strip(" ,;")
+    if len(key) < 12:
+        return None
+    for section, banner in BANNER.items():
+        if banner.startswith(key) or key.startswith(banner):
+            return section
     return None
+
+
+def match_chapter_end(line):
+    """True when the line opens a chapter after chapter I.
+
+    Chapter I only holds its three conflict types. Chapters II-IV repeat the
+    same TERRA INDIGENA / TIPO DE DANO labels with a different subject, so a
+    stale section key would file them under whichever chapter I section was last
+    seen. Their opening lines are "Capítulo II", "capitulo II",
+    "CAPÍTULO II    n    Violência Contra a Pessoa" and the same for III and IV.
+    """
+    if len(line) > 150 or re.search(r"\.{3,}", line):
+        return False
+    key = re.sub(r"\s+", " ", fold(line)).strip()
+    return bool(re.match(r"capitulo (ii|iii|iv)\b", key))
 
 
 def is_state_name(line):
     key = fold(line)
     return STATE_MAP.get(key) or STATE_UFS.get(key)
+
+
+def parse_state_header(line):
+    """(uf, printed_count) when the line is a state header, else None.
+
+    The reports changed the shape of this header four times between 2008 and
+    2025: "BA - 2 Casos", "MS\t 1 Caso", "MATO GROSSO DO SUL  -  9 CASOS",
+    "MATO GROSSO DO SUL (148)". The name is validated against the state table,
+    and a plain whitespace + number is accepted only with the word "Caso(s)",
+    so a table cell like "MS 4" is not read as a header.
+    """
+    for pattern in (RE_STATE_HEADER_DASH, RE_STATE_HEADER_PAREN, RE_STATE_HEADER_CASO):
+        m = pattern.match(line.strip())
+        if not m:
+            continue
+        uf = is_state_name(m.group("name").strip())
+        if not uf:
+            continue
+        tail = fold(m.group("tail") or "").strip()
+        if tail and not RE_STATE_TAIL.search(tail):
+            continue
+        return uf, int(m.group("n"))
+    return None
 
 
 def is_noise(line):
@@ -263,6 +350,7 @@ def parse_file(path, stats):
     section = None
     state = None
     section_totals = {}
+    state_totals = {}
     parsed = {key: 0 for key in SECTIONS}
     sections_seen = set()
     dropped = 0
@@ -306,9 +394,24 @@ def parse_file(path, stats):
             continue
 
         # photo captions leak into descriptions; drop the line above "Foto: ..."
+        # (but never a section banner or a chapter heading, which can sit right
+        # above a full-page photo)
         nxt = next_content(lines, here + 1)
-        if nxt is not None and fold(lines[nxt]).startswith("foto"):
+        if (
+            nxt is not None
+            and fold(lines[nxt]).startswith("foto")
+            and not match_section(line)
+            and not match_chapter_end(line)
+        ):
             dropped += 1
+            continue
+
+        # chapter II or later: chapter I is over, do not file its records
+        if match_chapter_end(line):
+            flush()
+            section = None
+            state = None
+            field = None
             continue
 
         if is_noise(line):
@@ -330,10 +433,6 @@ def parse_file(path, stats):
             if sec == section:
                 field = None
                 continue
-            if rec is not None and rec["desc"]:
-                # mid-description mention, not a section boundary
-                field = None
-                continue
             flush()
             section = sec
             state = None
@@ -341,14 +440,14 @@ def parse_file(path, stats):
             field = None
             continue
 
-        # state header, inline count: "BA - 2 Caso(s)"
-        inline = RE_STATE_INLINE.match(line)
-        if inline:
-            uf = is_state_name(inline.group("name").strip())
-            if uf:
-                flush()
-                state = uf
-                continue
+        # state header with inline count, any of the report-era shapes
+        header = parse_state_header(line)
+        if header:
+            uf, printed = header
+            flush()
+            state = uf
+            state_totals[uf] = state_totals.get(uf, 0) + printed
+            continue
 
         # state header, bare name followed by a count line: "ACRE" / "1 Caso"
         uf = is_state_name(line) if len(line) <= 30 else None
@@ -357,11 +456,14 @@ def parse_file(path, stats):
             if nxt is not None and RE_COUNT.match(lines[nxt].strip()):
                 flush()
                 state = uf
+                state_totals[uf] = state_totals.get(uf, 0) + int(
+                    RE_COUNT.match(lines[nxt].strip()).group("n")
+                )
                 i = nxt + 1
                 continue
 
         # bare section total: "158 Casos" closing a section title block
-        count = RE_COUNT.match(line)
+        count = RE_SECTION_COUNT.match(line)
         if count:
             anchor = prev_content(lines, here - 1)
             if anchor is not None:
@@ -371,7 +473,9 @@ def parse_file(path, stats):
                     section = key
                     section_totals.setdefault(key, int(count.group("n")))
                     sections_seen.add(key)
-                elif not is_state_name(raw_anchor) and looks_like_title(raw_anchor):
+                elif not (
+                    is_state_name(raw_anchor) or parse_state_header(raw_anchor)
+                ) and looks_like_title(raw_anchor):
                     # a title that is not one of the three chapter I ones:
                     # chapter II or III begins here
                     flush()
@@ -423,6 +527,11 @@ def parse_file(path, stats):
             "rows": len(rows),
             "parsed": parsed,
             "totals": section_totals,
+            "state_totals": state_totals,
+            "state_rows": {
+                uf: sum(1 for row in rows if row["state"] == uf)
+                for uf in {row["state"] for row in rows if row["state"]}
+            },
             "sections": sections_seen,
             "dropped": dropped,
             "skipped": skipped,
@@ -481,6 +590,16 @@ def report(stats, strict):
             problems.append(f"{name}: section title not found: {', '.join(missing)}")
         if item["rows"] == 0:
             problems.append(f"{name}: no chapter I records parsed")
+        # a record with no state means the state header was not recognised, and
+        # every downstream MS filter silently drops it
+        unstated = item["rows"] - sum(item["state_rows"].values())
+        if unstated:
+            problems.append(
+                f"{name}: {unstated} of {item['rows']} rows have no state"
+            )
+            marks.append(f"no-state {unstated}")
+        if item["state_totals"]:
+            marks.append(f"states {len(item['state_totals'])}")
         skips = {}
         for _, reason, _ in item["skipped"]:
             skips[reason] = skips.get(reason, 0) + 1

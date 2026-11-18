@@ -1,8 +1,8 @@
 """Figure: MapBiomas land cover inside one focus territory, 1985-2025.
 
-Input : data/derived/funai_focus5_territories.geojson (prepare_kaiowa_dataset.py)
+Input : data/derived/funai_focus_territories.geojson (prepare_kaiowa_dataset.py)
 Output: data/derived/mapbiomas_landcover_<TI>.csv   (ha per group per year, cache)
-        out/figs/<TI>/mapbiomas_landcover_1985_2025.png/.svg
+        out/figures/<TI>/mapbiomas_landcover_1985_2025.png/.svg
 
 MapBiomas Brasil Collection 11, 30 m annual, 1985-2025, asset
 `projects/mapbiomas-public/assets/brazil/lulc/collection11/
@@ -33,9 +33,9 @@ import ti_names
 from ti_names import norm_ti
 
 ROOT = Path(__file__).resolve().parents[1]
-FOCUS_GEOJSON = ROOT / "data/derived/funai_focus5_territories.geojson"
+FOCUS_GEOJSON = ROOT / "data/derived/funai_focus_territories.geojson"
 DERIVED = ROOT / "data/derived"
-FIGS = ROOT / "out/figs"
+FIGS = ROOT / "out/figures"
 
 GEE_PROJECT = "345965002834"
 MBC11 = ("projects/mapbiomas-public/assets/brazil/lulc/collection11/"
@@ -63,14 +63,14 @@ COLORS = {
     "nonobserved": "#cccccc",
 }
 LABELS = {
-    "native_veg": "Vegetação nativa",
-    "pasture": "Pastagem",
-    "agriculture": "Agricultura",
-    "mosaic": "Mosaico de usos",
-    "plantation": "Silvicultura",
-    "other_nonveg": "Outras áreas não vegetadas",
-    "water": "Água",
-    "nonobserved": "Não observado",
+    "native_veg": "Native vegetation",
+    "pasture": "Pasture",
+    "agriculture": "Agriculture",
+    "mosaic": "Mosaic of uses",
+    "plantation": "Forest plantation",
+    "other_nonveg": "Other non-vegetated",
+    "water": "Water",
+    "nonobserved": "Not observed",
 }
 GIDS = list(GROUPS)
 
@@ -143,7 +143,7 @@ def cimi_occupied(ti_clean: str) -> tuple[float, float, float, str] | None:
 
 def add_demarcation_line(ax: plt.Axes, ti_clean: str) -> None:
     """Red line at the FUNAI demarcation date (first legal act) from the inventory."""
-    inventory = ROOT / "data/derived/funai_focus5_inventory.csv"
+    inventory = ROOT / "data/derived/funai_focus_territories_inventory.csv"
     if not inventory.exists():
         print("no focus inventory; no demarcation line")
         return
@@ -153,11 +153,11 @@ def add_demarcation_line(ax: plt.Axes, ti_clean: str) -> None:
         return
     r = row.iloc[0]
     year = pd.to_datetime(r["defined_date"]).year
-    stage = r["defined_stage"].capitalize()
+    stage = ti_names.stage_en(r["defined_stage"])
     phase = r.get("fase_ti", "")
     label = f"FUNAI {stage} {year}"
     if isinstance(phase, str) and phase:
-        label += f" · fase atual: {phase}"
+        label += f" · current stage: {ti_names.stage_en(phase)}"
     ax.axvline(year, color="black", linewidth=1.6, linestyle="--", zorder=5)
     label_y = ax.get_ylim()[1] * 0.96
     ax.text(year + 0.4, label_y, label, color="black",
@@ -174,9 +174,9 @@ def plot(df: pd.DataFrame, ti_clean: str, out_dir: Path) -> None:
     cimi = cimi_occupied(ti_clean)
     if cimi:
         occupied, area, share, year = cimi
-        subtitle = (f"\nÁrea do território: {area:,.0f} ha; a comunidade ocupa "
-                    f"efetivamente {occupied:,.0f} ha ({share:.2f}%) "
-                    f"segundo o Cimi ({year})")
+        subtitle = (f"\nTerritory area: {area:,.0f} ha; the community effectively "
+                    f"occupies {occupied:,.0f} ha ({share:.2f}%) "
+                    f"according to CIMI ({year})")
 
     fig, ax = plt.subplots(figsize=(11, 6))
     final_ha = {g: wide[g].iloc[-1] for g in GIDS}
@@ -190,13 +190,13 @@ def plot(df: pd.DataFrame, ti_clean: str, out_dir: Path) -> None:
     ax.set_xlim(YEARS[0], YEARS[-1])
     ax.set_ylim(0, total.max())
     ax.set_ylabel("Hectares (ha)")
-    ax.set_xlabel("Ano")
-    ax.set_title(f"Uso do solo em {ti_clean.title()}\n"
-                 "MapBiomas Coleção 11, 1985-2025 (hectares dentro do território)"
+    ax.set_xlabel("Year")
+    ax.set_title(f"Land cover in {ti_clean.title()}\n"
+                 "MapBiomas Collection 11, 1985-2025 (hectares inside the territory)"
                  + subtitle)
     handles, labels_ = ax.get_legend_handles_labels()
     ax.legend(handles[::-1], labels_[::-1], loc="lower left", bbox_to_anchor=(1.02, 0.0),
-              title=f"Classe ({YEARS[-1]})", fontsize=9)
+              title=f"Class ({YEARS[-1]})", fontsize=9)
     add_demarcation_line(ax, ti_clean)
     ax.set_axisbelow(True)
     fig.tight_layout()

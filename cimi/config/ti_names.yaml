@@ -8,13 +8,23 @@
 # Names reviewed against FUNAI terrai_nom (tis_poligonais, retrieved 2026-11-04)
 # on 2026-11-11. 25 Kaiowa territories in the FUNAI inventory.
 
-# The five territories chosen for the later MapBiomas and Sentinel-1 analyses.
+# The territories chosen for the later MapBiomas and Sentinel-1 analyses: all
+# ten territories in the CIMI occupation-share table. Eight have polygons FUNAI
+# attributes to the Guarani Kaiowá (or, for Dourados-Amambaipeguá I, to the
+# Guaraní); Sombrerito and Potrero Guasu are attributed to the Guarani
+# Nhandeva but are tracked in the same CIMI analysis, so their FUNAI polygons
+# are kept too.
 focus_territories:
   - ARROIO KORA
   - GUYRAROKA
   - IGUATEMIPEGUA I
   - JATAYVARY
   - TAQUARA
+  - NHANDERU MARANGATU
+  - PANAMBI (LAGOA RICA)
+  - SOMBRERITO
+  - POTRERO GUASU
+  - DOURADOS AMAMBAIPEGUA I
 
 # Normalised CIMI spelling variants -> canonical CIMI label.
 cimi_variants:
@@ -25,7 +35,31 @@ cimi_variants:
   TEKOHA ARATIKUTY: ARATIKUTY
   PANAMBI: PANAMBI (LAGOA RICA)
   PANAMBI LAGOA RICA: PANAMBI (LAGOA RICA)
+  IGUATEMIPEGUA I (PYELITO KUE/MBARAKAY): IGUATEMIPEGUA I
   LARANJEIRA NHANDERU E BOQUEIRAO (BRI LHANTEPEGUA): LARANJEIRA NHANDERU E BOQUEIRAO (BRILHANTEPEGUA)
+
+  # Spellings CIMI used from 2024 on, swept against the full 2008-2025 extract
+  # on 2026-11-18. Without these the 2024/2025 reports split one territory into
+  # two rows of the heatmap (Apyka'i and Aratikuty were the visible cases).
+  ACAMPAMENTO APYKA Y: APIKAY
+  APYKA Y: APIKAY
+  APYKAY (CURRAL DE ARAME): APIKAY
+  ARATI KUTI: ARATIKUTY
+  AVAETE 01: AVAETE I
+  AVAETE 01 (GUYRA GUEJYHA): AVAETE I
+  TEKOHA AVAETE: AVAETE I
+  BACIA BRILHANTEPEGUA (LARANJEIRA NHANDERU, BOQUEIRAO): LARANJEIRA NHANDERU E BOQUEIRAO (BRILHANTEPEGUA)
+  "BACIA DOURADOS AMAMBAIPEGUA I (JAVORAI KUE, PINDOROKY, KM 20 YRUKUTU, LAGUNA JOHA, TEYY JUSU, GUAPOY, NANDEVA, JEROKY GUASU, NHAMOI GUAVIRAY, KUNUMI VERA, ITAGUA, PAI TAVITERA)": DOURADOS AMAMBAIPEGUA I
+  "BACIA DOURADOS AMAMBAIPEGUA II (LECHUCHA, MATULA, SAO LUCAS, BONITO, SANTIAGO KUE, KURUPI, KURUPAI MBOKA)": DOURADOS AMAMBAIPEGUA II
+  DOURADOS AMAMBAIPEGUA III PASSO PIRAJU/NU PORA: PASSO PIRAJU
+  IGUATEMIPEGUA I (PYELLITO KUE, MBARAKAY): IGUATEMIPEGUA I
+  MBARAKAY: IGUATEMIPEGUA I
+  PYELITO KUE: IGUATEMIPEGUA I
+  PYELLITO KUE: IGUATEMIPEGUA I
+  NHU VERA: NU VERA
+  PAKURITY (MS): PACURITY
+  "PANAMBI LAGOA RICA (ITAY, GUYRA KAMBIY, GUAAROKA, YVY AJERE, PYKYXYIN, KURUPAITY, TAJASU IGUA)": PANAMBI (LAGOA RICA)
+  YPOI/TRIUNFO: YPOI E TRIUNFO
 
 # FUNAI terrai_nom (after norm_ti) -> canonical CIMI label. FUNAI names absent
 # here are either already identical to the canonical label or have no CIMI
@@ -34,8 +68,51 @@ funai_to_cimi:
   APYKAI: APIKAY
   NANDE RU MARANGATU: NHANDERU MARANGATU
   PANAMBI LAGOA RICA: PANAMBI (LAGOA RICA)
+  POTRERO GUACU: POTRERO GUASU
   YPOI/TRIUNFO: YPOI E TRIUNFO
   JATAYVARI: JATAYVARY
+
+# Free-text mention patterns for the full-report scan
+# (scripts/extract_territory_mentions.py, 2026-11-17). Regexes are applied to
+# accent-folded lower-case text, so write them in ASCII. `pattern` finds the
+# territory; `reject` drops collisions with other territories, states and
+# municipalities; `requires_ms` means a bare match only counts when the same
+# block names Mato Grosso do Sul or one of the ten municipalities.
+mention_patterns:
+  ARROIO KORA:
+    pattern: "arroio[\\s\\-]*kor"
+  GUYRAROKA:
+    pattern: "guyrarok"
+  IGUATEMIPEGUA I:
+    pattern: "iguatemip+egu|pyelito\\s*kue|mbaraka"
+  JATAYVARY:
+    pattern: "jata[\\s']*yvar"
+  TAQUARA:
+    pattern: "(?<![\\w/])taquara(?![\\w/])"
+    reject: "taquaritiua|taquarana|gaviao\\s*/?\\s*taquara|taquara\\s*\\(\\s*am\\s*\\)|munduruku|com uma taquara|peda[cç]o de taquara|moita de taquara|taquara na cabe"
+    requires_ms: true
+  NHANDERU MARANGATU:
+    pattern: "marangatu"
+    reject: "teko\\s*ha\\s+marangatu|guaira|imarui|tengatji|escola .{0,20}marangatu"
+    requires_ms: true
+  PANAMBI (LAGOA RICA):
+    pattern: "panambi"
+    reject: "panambizinho|panambi\\s*\\(\\s*rs\\s*\\)"
+    requires_ms: true
+  SOMBRERITO:
+    pattern: "sombrerito"
+    reject: "sombrerito\\s*\\(\\s*(rs|pr|sc)\\s*\\)"
+    requires_ms: true
+  POTRERO GUASU:
+    pattern: "potrero\\s*gua"
+  DOURADOS AMAMBAIPEGUA I:
+    pattern: "amambaipegu"
+    # numerals II/III/IV are different territories (II has no FUNAI polygon,
+    # III is Passo Piraju/Ñu Porã). A bare mention counts as I and is flagged.
+    numerals: ["i", "ii", "iii", "iv"]
+
+# MS / municipality cues used by `requires_ms` above.
+ms_cues: "\\bms\\b|mato grosso do sul|paranhos|caarapo|iguatemi|ponta pora|antonio joao|douradina|itapora|juti|sete quedas|amambai|navirai|dourados"
 
 # Known unresolved questions, kept visible on purpose. Do not delete silently.
 notes:
@@ -49,3 +126,16 @@ notes:
   - "CIMI-only names (campamentos, tekoha retomadas such as NU VERA, YVU VERA,
     KURUSU AMBA, LARANJEIRA NHANDERU) have no FUNAI polygon by design: FUNAI
     lists declared territories, CIMI also reports conflicts on retomadas."
+  - "Merged on 2026-11-18 after a full sweep of the 2008-2025 extract: APYKA Y,
+    ACAMPAMENTO APYKA Y and APYKAY (CURRAL DE ARAME) into APIKAY; ARATI KUTI
+    into ARATIKUTY; PYELITO KUE, PYELLITO KUE, MBARAKAY and the labelled
+    Iguatemipegua I variants into IGUATEMIPEGUA I; the 'Bacia <TI> (list)'
+    spellings into their TI; PAKURITY (MS) into PACURITY; NHU VERA into NU VERA;
+    YPOI/TRIUNFO into YPOI E TRIUNFO; the Ava'ete 01 / Tekoha Ava'ete spellings
+    into AVAETE I. This took the heatmap from 65 to 46 rows."
+  - "Left unmerged on 2026-11-18, needs a reading of the case text: AMAMBAI
+    (ANTIGA GUAPOY) and GUAPOY against AMAMBAI (the 2022-2025 cases are about
+    the Guapoy Mirim Tujury retomada, not the reserve itself); MARANGATU (one
+    2009 case) against NHANDERU MARANGATU; BOQUEIRAO and LARANJEIRA NHANDERU
+    against LARANJEIRA NHANDERU E BOQUEIRAO (BRILHANTEPEGUA); NU PORA against
+    PASSO PIRAJU; YVU VERA against NU VERA."

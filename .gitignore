@@ -10,21 +10,20 @@ venv-*/
 *.venv/
 *.pyvenv/
 
-# data transfers in and out are reproducible downloads; keep only notes
-data/raw/*
-!data/raw/README.md
-# hand-authored document registry, not a download
-!data/raw/documents_manual.csv
+# data transfers in and out are reproducible downloads; keep only notes.
+# Patterns are anchored to the repository root, so the project subdirectory has
+# to be spelled out: a bare "data/raw/*" matches nothing under cimi/.
+cimi/data/raw/*
+!cimi/data/raw/README.md
 # cached satellite stacks; regenerable from GEE
-data/cache/
+cimi/data/cache/
 
 # PDF text extractions; regenerable with pdftext.py
-data/interim/*
-!data/interim/README.md
+cimi/data/interim/*
+!cimi/data/interim/README.md
 
-# generated tables; keep the notes
-data/derived/*
-!data/derived/README.md
+# generated tables; the cimi project tracks the small derived CSVs and the
+# figure outputs on purpose, so nothing under cimi/data/derived/ is ignored
 
 __pycache__/
 *.pyc

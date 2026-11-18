@@ -23,7 +23,7 @@ def norm_ti(value: object) -> object:
         return value
     s = unicodedata.normalize("NFKD", value).encode("ascii", "ignore").decode()
     s = s.upper()
-    s = re.sub(r"[-'\u2019]", " ", s)   # hyphens and apostrophes become spaces
+    s = re.sub(r"[-'\u2019\u2013\u2014]", " ", s)   # hyphens, en/em dashes, apostrophes become spaces
     s = re.sub(r"\s+", " ", s)
     return s.strip()
 
@@ -34,6 +34,8 @@ with CONVENTIONS_FILE.open(encoding="utf-8") as fh:
 FOCUS_TERRITORIES: list[str] = _CONVENTIONS["focus_territories"]
 CIMI_VARIANTS: dict[str, str] = _CONVENTIONS["cimi_variants"]
 FUNAI_TO_CIMI: dict[str, str] = _CONVENTIONS["funai_to_cimi"]
+MENTION_PATTERNS: dict[str, dict] = _CONVENTIONS.get("mention_patterns", {})
+MS_CUES: str = _CONVENTIONS.get("ms_cues", r"\bms\b")
 
 
 def cimi_ti(series: pd.Series) -> pd.Series:
@@ -42,5 +44,22 @@ def cimi_ti(series: pd.Series) -> pd.Series:
 
 
 def funai_ti(series: pd.Series) -> pd.Series:
-    """Canonical CIMI labels from FUNAI's terrai_nom."""
+    """Canonical CIMI labels from FUNAI's terrai_nome."""
     return series.map(norm_ti).replace(FUNAI_TO_CIMI)
+
+
+# FUNAI legal stages are Portuguese in the download; figures read in English.
+STAGE_LABELS = {
+    "em estudo": "under study",
+    "delimitada": "delimitation",
+    "declarada": "declaration",
+    "homologada": "ratification",
+    "regularizada": "regularisation",
+}
+
+
+def stage_en(stage: object) -> str:
+    """English label for a FUNAI stage; unknown values pass through unchanged."""
+    if not isinstance(stage, str) or not stage.strip():
+        return ""
+    return STAGE_LABELS.get(stage.strip().lower(), stage.strip())

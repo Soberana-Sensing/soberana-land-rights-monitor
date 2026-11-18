@@ -1,9 +1,11 @@
 """Figure: share of each territory the community occupies, as CIMI reports it.
 
 Input : data/derived/cimi_ms_occupation_shares.csv
-Output: out/figs/cimi_kaiowa_occupation_share.png/.svg
+Output: out/figures/cimi_kaiowa_occupation_share.png/.svg
 
-CIMI first publishes the figure in the 2020 edition; the CSV holds the repeats.
+CIMI first publishes the figure in the 2020 edition and later drops it; this CSV
+is hand-copied from the 2020 report, which has the only complete per-territory
+list.
 """
 
 from __future__ import annotations
@@ -16,7 +18,7 @@ import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[1]
 SHARES = ROOT / "data/derived/cimi_ms_occupation_shares.csv"
-FIGS = ROOT / "out/figs"
+FIGS = ROOT / "out/figures"
 STEM = "cimi_kaiowa_occupation_share"
 
 

@@ -1,9 +1,9 @@
 """Figure: CIMI conflict cases per territory and year, Kaiowá in Mato Grosso do Sul.
 
 Input : data/derived/cimi_kaiowa_ms_conflicts.csv
-        data/derived/cimi_kaiowa_ms_conflicts_focus5.csv
-Output: out/figs/cimi_kaiowa_conflict_heatmap.png/.svg        (all Kaiowá TIs)
-        out/figs/cimi_kaiowa_conflict_heatmap_focus5.png/.svg (focus territories)
+        data/derived/cimi_kaiowa_ms_conflicts_focus_territories.csv
+Output: out/figures/cimi_kaiowa_conflict_heatmap.png/.svg        (all Kaiowá TIs)
+        out/figures/cimi_kaiowa_conflict_heatmap_focus_territories.png/.svg (focus territories)
 
 Cell colour = the conflict-type-major that appears most in that cell; a
 single-case cell takes that case's own colour; empty cells stay grey.
@@ -20,19 +20,22 @@ import pandas as pd
 from matplotlib.colors import BoundaryNorm
 
 ROOT = Path(__file__).resolve().parents[1]
-FIGS = ROOT / "out/figs"
+FIGS = ROOT / "out/figures"
 
 GREY = "#d9d9d9"
 
 
 def heatmap_cases(df: pd.DataFrame, title: str, stem: str,
                   year_col: str = "year", ti_col: str = "TI_CLEAN",
-                  color_col: str = "conflict-type-major") -> None:
+                  color_col: str = "conflict-type-major",
+                  legend_side: str = "bottom",
+                  years: list[int] | None = None) -> None:
     counts = df.groupby([ti_col, year_col]).size()
     modal = (df.groupby([ti_col, year_col])[color_col]
                .agg(lambda s: s.mode().iat[0] if len(s.mode()) else np.nan))
 
-    years = sorted(counts.index.get_level_values(year_col).unique())
+    if years is None:
+        years = list(range(int(df[year_col].min()), int(df[year_col].max()) + 1))
     tis = sorted(counts.index.get_level_values(ti_col).unique(), key=str.lower)
 
     count_mat = np.zeros((len(tis), len(years)))
@@ -53,6 +56,7 @@ def heatmap_cases(df: pd.DataFrame, title: str, stem: str,
     norm = BoundaryNorm(np.arange(-0.5, len(types) + 0.5, 1), len(types))
 
     fig, ax = plt.subplots(figsize=(1.0 + 0.8 * len(years), 0.5 + 0.5 * len(tis)))
+    ax.tick_params(labelsize=15)
     ax.pcolormesh(np.arange(len(years) + 1), np.arange(len(tis) + 1),
                   np.ma.masked_invalid(type_mat),
                   cmap=cmap, norm=norm, edgecolors="white")
@@ -62,19 +66,36 @@ def heatmap_cases(df: pd.DataFrame, title: str, stem: str,
             n = int(count_mat[i, j])
             if n:
                 ax.text(j + 0.5, i + 0.5, str(n), ha="center", va="center",
-                        fontsize=9, fontweight="bold")
+                        fontsize=13, fontweight="bold")
 
     ax.set_xticks(np.arange(len(years)) + 0.5, years, rotation=45, ha="right")
     ax.set_yticks(np.arange(len(tis)) + 0.5, tis)
     ax.invert_yaxis()
-    ax.set_xlabel("Ano")
-    ax.set_ylabel("TI")
-    ax.set_title(title, pad=12)
+    ax.set_xlabel("Year", fontsize=16)
+    ax.set_ylabel("Territory", fontsize=16)
+    ax.set_title(title, pad=12, fontsize=18)
 
-    handles = [mpatches.Patch(color=cmap(i), label=t) for i, t in enumerate(types)]
-    handles.append(mpatches.Patch(color=GREY, label="sem casos"))
-    ax.legend(handles=handles, title=color_col,
-              bbox_to_anchor=(1.02, 1), loc="upper left")
+    # CIMI writes the categories in Portuguese; the figure reads in English but
+    # the underlying data column keeps CIMI's own strings
+    def legend_label(t: str) -> str:
+        if t == "invasões possessórias, exploração ilegal de recursos naturais e danos diversos ao patrimônio":
+            return ("possessory invasions, illegal resource\n"
+                    "extraction, damage to property")
+        if t == "conflitos relativos a direitos territoriais":
+            return "land-rights conflicts"
+        if t == "omissão e morosidade na regularização de terras":
+            return "state omission and delay in land regularisation"
+        return t
+
+    handles = [mpatches.Patch(color=cmap(i), label=legend_label(t)) for i, t in enumerate(types)]
+    handles.append(mpatches.Patch(color=GREY, label="no cases"))
+    if legend_side == "right":
+        ax.legend(handles=handles, title="Legend", fontsize=15, title_fontsize=16,
+                  bbox_to_anchor=(1.02, 1), loc="upper left")
+    else:
+        ax.legend(handles=handles, title="Legend", fontsize=15, title_fontsize=16,
+                  ncol=1, loc="upper center", bbox_to_anchor=(0.5, -0.28),
+                  alignment="left")
 
     FIGS.mkdir(parents=True, exist_ok=True)
     for ext in ("png", "svg"):
@@ -85,14 +106,26 @@ def heatmap_cases(df: pd.DataFrame, title: str, stem: str,
 
 def main() -> None:
     all_rows = pd.read_csv(ROOT / "data/derived/cimi_kaiowa_ms_conflicts.csv")
-    heatmap_cases(all_rows,
-                  "Casos por TI e ano, Kaiowá em MS (cor = tipo mais frequente)",
-                  "cimi_kaiowa_conflict_heatmap")
+    focus = pd.read_csv(ROOT / "data/derived/cimi_kaiowa_ms_conflicts_focus_territories.csv")
 
-    focus = pd.read_csv(ROOT / "data/derived/cimi_kaiowa_ms_conflicts_focus5.csv")
+    # Both figures share one year axis so they can be read side by side, and
+    # years without cases stay visible as empty columns instead of closing up.
+    first = int(min(all_rows["year"].min(), focus["year"].min()))
+    last = int(max(all_rows["year"].max(), focus["year"].max()))
+    years = list(range(first, last + 1))
+
+    heatmap_cases(all_rows,
+                  "Cases per territory and year, Kaiowá in Mato Grosso do Sul\n"
+                  "(colour = most frequent conflict type)",
+                  "cimi_kaiowa_conflict_heatmap",
+                  legend_side="right",
+                  years=years)
+
     heatmap_cases(focus,
-                  "Casos por TI e ano, territórios de foco (cor = tipo mais frequente)",
-                  "cimi_kaiowa_conflict_heatmap_focus5")
+                  "Cases per territory and year, focus territories\n"
+                  "(colour = most frequent conflict type)",
+                  "cimi_kaiowa_conflict_heatmap_focus_territories",
+                  years=years)
 
 
 if __name__ == "__main__":

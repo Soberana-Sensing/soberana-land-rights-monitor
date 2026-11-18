@@ -4,14 +4,16 @@ Input : data/derived/chapter1_conflicts.csv           (chapter1_txt_to_csv.py)
         data/derived/funai_territorial_inventory_ms.csv (build_funai_inventory.py)
         data/derived/funai_kaiowa_ms_clipped.geojson    (build_funai_inventory.py)
 Output: data/derived/cimi_kaiowa_ms_conflicts.csv
-        data/derived/cimi_kaiowa_ms_conflicts_focus5.csv
-        data/derived/funai_focus5_inventory.csv
-        data/derived/funai_focus5_territories.geojson
+        data/derived/cimi_kaiowa_ms_conflicts_focus_territories.csv
+        data/derived/funai_focus_territories_inventory.csv
+        data/derived/funai_focus_territories.geojson
 
 Adds TI_CLEAN to both sides using the conventions in config/ti_names.yaml, then
-reports which territory names exist on only one side. The focus-5 outputs are
-the inputs for the later MapBiomas and Sentinel-1 analyses; they carry the
-territory polygons, the FUNAI attributes and the CIMI conflict cases.
+reports which territory names exist on only one side. The focus outputs are the
+inputs for the later MapBiomas and Sentinel-1 analyses; they carry the territory
+polygons, the FUNAI attributes and the CIMI conflict cases. The focus set is
+selected by territory, not by the people label, so cases CIMI files under
+'Guarani' or 'Guarani Nhandeva' stay in the extract.
 """
 
 from __future__ import annotations
@@ -30,9 +32,9 @@ INVENTORY = ROOT / "data/derived/funai_territorial_inventory_ms.csv"
 CLIPPED = ROOT / "data/derived/funai_kaiowa_ms_clipped.geojson"
 
 OUT_ALL = ROOT / "data/derived/cimi_kaiowa_ms_conflicts.csv"
-OUT_FOCUS = ROOT / "data/derived/cimi_kaiowa_ms_conflicts_focus5.csv"
-OUT_INV_FOCUS = ROOT / "data/derived/funai_focus5_inventory.csv"
-OUT_GEO_FOCUS = ROOT / "data/derived/funai_focus5_territories.geojson"
+OUT_FOCUS = ROOT / "data/derived/cimi_kaiowa_ms_conflicts_focus_territories.csv"
+OUT_INV_FOCUS = ROOT / "data/derived/funai_focus_territories_inventory.csv"
+OUT_GEO_FOCUS = ROOT / "data/derived/funai_focus_territories.geojson"
 
 
 def main() -> None:
@@ -41,6 +43,8 @@ def main() -> None:
             raise SystemExit(f"Missing input: {path} (run the earlier pipeline steps)")
 
     df = pd.read_csv(CONFLICTS)
+    ms_rows = df.loc[df["state"].astype("string").str.contains("MS", case=False, na=False)].copy()
+    ms_rows["TI_CLEAN"] = cimi_ti(ms_rows["TI"])
     kaiowa = df.loc[df["povo"].astype("string").str.contains("kaio", case=False, na=False)]
     kaiowa_ms = kaiowa.loc[kaiowa["state"].astype("string").str.contains("MS", case=False, na=False)].copy()
     kaiowa_ms["TI_CLEAN"] = cimi_ti(kaiowa_ms["TI"])
@@ -55,13 +59,16 @@ def main() -> None:
     print(f"TIs in FUNAI only ({len(only_funai)}):", sorted(only_funai))
     print(f"TIs in CIMI only ({len(only_cimi)}):", sorted(only_cimi))
 
-    missing = set(FOCUS_TERRITORIES) - in_both
+    missing = set(FOCUS_TERRITORIES) - set(inventory["TI_CLEAN"])
     if missing:
         raise SystemExit(f"Focus territories without a polygon in the inventory: {sorted(missing)}")
 
     OUT_ALL.parent.mkdir(parents=True, exist_ok=True)
     kaiowa_ms.to_csv(OUT_ALL, index=False)
-    focus_conflicts = kaiowa_ms.loc[kaiowa_ms["TI_CLEAN"].isin(FOCUS_TERRITORIES)]
+    # The focus set is defined by territory, not by the people label: CIMI files
+    # some Potrero Guasu and Sombrerito cases under "Guarani" or "Guarani
+    # Nhandeva", so filtering the focus extract by povo would drop them.
+    focus_conflicts = ms_rows.loc[ms_rows["TI_CLEAN"].isin(FOCUS_TERRITORIES)]
     focus_conflicts.to_csv(OUT_FOCUS, index=False)
 
     focus_inv = inventory.loc[inventory["TI_CLEAN"].isin(FOCUS_TERRITORIES)].sort_values("TI_CLEAN")
