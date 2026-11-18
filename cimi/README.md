@@ -7,6 +7,22 @@ stay in the data columns; the heatmap legend translates the three
 `conflict-type-major` values it draws, and the FUNAI legal stages go through
 `ti_names.stage_en()` so no Portuguese stage name reaches a chart.
 
+## Repository size
+
+This project version-controls its sources, not only its code, so a fresh clone is
+large on purpose:
+
+| Path | Size | Why it is committed |
+|---|---|---|
+| `docs/cimi-reports/pdf/` | about 127 MB | The 18 CIMI reports (2008-2025) are the primary source. They are not re-downloadable from a stable archive, so they stay in git. |
+| `docs/cimi-reports/txt/` | about 16 MB | Text extracted from those PDFs, committed so the parsers can run without a PDF step. Regenerable with `pdftext.py`. |
+| `out/figures/` | about 20 MB | PNG and SVG exports of every figure, so a reader sees the result without running the pipeline. Regenerable by re-running the plot scripts. |
+| `data/derived/` | about 8 MB | Small tables and the FUNAI GeoJSONs the figures and later analyses read. Regenerable in pipeline order. |
+| `data/raw/` | excluded | The FUNAI download and the MS boundary are git-ignored; `data/raw/README.md` records where each came from. |
+
+Expect a clone of roughly 170 MB. Nothing here needs Git LFS at this size, but a
+shallow clone (`--depth 1`) is the quick way to read the code without the reports.
+
 ## Name conventions
 
 `config/ti_names.yaml` holds the territory-name data: the ten focus
