@@ -6,13 +6,14 @@ Input : data/derived/cimi_kaiowa_ms_conflicts.csv  (prepare_kaiowa_dataset.py)
         data/raw/gaul_ms_boundary_2025.geojson
 Output: out/figures/cimi_kaiowa_conflict_bubble_map_all.png/.svg
 
-The map companion of `cimi_kaiowa_conflict_heatmap.png`: same 46 territory labels,
-same 209 cases, but placed on the ground. Bubble area is proportional to the count
-and each bubble carries its number, keyed in the right-hand panel.
+The map companion of `cimi_kaiowa_conflict_heatmap.png`: same 41 territory
+labels, 210 rows for 209 printed cases, but placed on the ground. Bubble area is
+proportional to the count and each bubble carries its number, keyed in the
+right-hand panel.
 
-Not every label can be placed. Chapter I files cases under acampamentos (PYELITO
-KUE, ACAMPAMENTO ITA POTY), municipalities (DOURADOS, AMAMBAI, CAARAPO hold
-reserve cases), squatted farms (GUAPOY, SANTIAGO KUE) and catch-alls (VARIAS).
+Not every label can be placed. Chapter I files cases under acampamentos
+(NU VERA, ACAMPAMENTO ITA POTY), municipalities (DOURADOS, AMAMBAI, CAARAPO hold
+reserve cases), squatted farms (SANTIAGO KUE) and catch-alls (VARIAS).
 Only labels that match a FUNAI territory name get a bubble; the rest are listed
 with their counts along the bottom, so the figure never silently drops cases.
 

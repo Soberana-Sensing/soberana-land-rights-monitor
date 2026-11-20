@@ -31,6 +31,15 @@ territories, the CIMI spelling variants, and the FUNAI-to-CIMI name mapping.
 Every script imports from there; nothing else defines a TI mapping. If a name
 needs to change, change the YAML, not the code.
 
+Two special cases in that file, both checked against the case text on
+2026-11-19. `cimi_variants` folds CIMI's own renamings into one label: AMAMBAI
+absorbs AMAMBAI (ANTIGA GUAPOY) and GUAPOY (the tekoha Guapoy retomada), and
+LARANJEIRA NHANDERU E BOQUEIRAO (BRILHANTEPEGUA) absorbs LARANJEIRA NHANDERU
+and BOQUEIRAO. `cimi_multi` is the opposite: a single record that CIMI prints
+under two names, Guyraroka and Panambi-Lagoa Rica, expands to one row per
+territory because the record is real in both. That is the only deliberate
+double count, and it is why 209 printed cases become 210 rows.
+
 ## Setup
 
 1. Create a conda environment (install miniconda3 if you don't have it):
@@ -191,25 +200,26 @@ front matter, prose and tables included, 408 mentions. The mention map therefore
 counts attention across the reports, not conflict.
 
 Scope is the ten focus territories on purpose. Chapter I carries 209 Kaiowá-MS
-cases under 46 territory labels; only 20 match a FUNAI territory name, and the
-rest are acampamentos, municipalities and squatted-farm names, so a bubble per
-label would put invented points on the map. The all-territory figure below plots
-the 20 and lists the other 26. The focus script asserts that every focus
-territory has a polygon, and stops if a case turns up under a territory outside
-the focus set.
+cases (210 rows, because one printed record names two territories) under 41
+territory labels; only 20 match a FUNAI territory name, and the rest are
+acampamentos, municipalities and squatted-farm names, so a bubble per label
+would put invented points on the map. The all-territory figure below plots the
+20 and lists the other 21. The focus script asserts that every focus territory
+has a polygon, and stops if a case turns up under a territory outside the focus
+set.
 
 ```bash
 ./.cimi-venv/bin/python3 scripts/plot_conflict_bubble_map_all.py
 ```
 
-The same figure for every row of the all-Kaiowá heatmap: 46 territory labels and
-209 cases. Twenty labels match a FUNAI territory name and get a numbered bubble,
-sized by the count; the right-hand key maps each number to its label and count.
-The other 26 labels have no polygon to sit on, so they are listed with their
-counts along the bottom instead of being dropped: `DOURADOS AMAMBAIPEGUA II`
-(10 cases, an area CIMI names but FUNAI has not delimited), `KURUSU AMBA` (8),
-the Laranjeira Nhanderu variants, acampamentos such as `PYELITO KUE`, the
-municipality rows and the `VARIAS` catch-all.
+The same figure for every row of the all-Kaiowá heatmap: 41 territory labels and
+210 rows for 209 printed cases. Twenty labels match a FUNAI territory name and
+get a numbered bubble, sized by the count; the right-hand key maps each number
+to its label and count. The other 21 labels have no polygon to sit on, so they
+are listed with their counts along the bottom instead of being dropped:
+`DOURADOS AMAMBAIPEGUA II` (10 cases, an area CIMI names but FUNAI has not
+delimited), `KURUSU AMBA` (8), acampamentos such as `NU VERA`, the municipality
+rows and the `VARIAS` catch-all.
 
 Two caveats the figure itself carries: the CIMI rows `DOURADOS`, `AMAMBAI` and
 `CAARAPO` name the reserve or the municipality, so those three bubbles mean "in
@@ -227,13 +237,14 @@ classes collapse into six groups (native vegetation, pasture, agriculture,
 mosaic of uses, forest plantation, other non-vegetated) plus water and a
 non-observed bucket. The title carries the current FUNAI stage and the
 community's effective occupation from the CIMI shares, plus the territory area.
-Each FUNAI legal act recorded in the focus inventory gets its own dashed
-vertical line, coloured by stage: delimitation (indigo), declaration (amber),
-ratification (purple). A territory with no date for a stage gets no line for
-it, and no stage text is written inside the plot; a second legend names the
-line colours. `--ti` takes any `TI_CLEAN` name from
-`funai_focus_territories.geojson`; `--refresh` requeries GEE, otherwise the run
-reuses the cache CSV `data/derived/mapbiomas_landcover_<ti>.csv`. Writes
+Each FUNAI legal act recorded in the focus inventory gets its own vertical
+line, coloured by stage: delimitation (indigo), declaration (amber),
+ratification (purple). Ratification is the closing act and draws solid; the two
+earlier stages draw evenly dashed. A territory with no date for a stage gets no
+line for it, and no stage text is written inside the plot; a second legend,
+titled "Legal status", names the line colours. `--ti` takes any `TI_CLEAN` name
+from `funai_focus_territories.geojson`; `--refresh` requeries GEE, otherwise the
+run reuses the cache CSV `data/derived/mapbiomas_landcover_<ti>.csv`. Writes
 `out/figures/<TI>/mapbiomas_landcover_1985_2025.*` (PNG at 300 dpi and SVG).
 
 ```bash
@@ -241,12 +252,14 @@ reuses the cache CSV `data/derived/mapbiomas_landcover_<ti>.csv`. Writes
 ```
 
 All ten focus territories on one figure: a 5x2 grid of the stacked-area land
-cover charts, built from the per-territory cache CSVs (no Earth Engine call).
-Panels follow the `focus_territories` order in `config/ti_names.yaml` and keep
-the per-territory style of `plot_mapbiomas_landcover.py`, including the
-coloured legal-act lines, with each panel title naming its current stage. Two
-shared legends above the grid: land-cover classes, and the three legal-act
-line colours. Run it after the ten `plot_mapbiomas_landcover.py` runs above.
+cover charts, titled "LULC per delimited territory", built from the
+per-territory cache CSVs (no Earth Engine call). Panels follow the
+`focus_territories` order in `config/ti_names.yaml` and keep the per-territory
+style of `plot_mapbiomas_landcover.py`, including the legal-act lines, each
+panel title naming its current stage, and an x-axis (Year) and y-axis
+(Hectares (ha)) on every panel. Two shared legends above the grid: "Legend" for
+the land-cover classes, then "Legal status" for the line colours, separated by
+a blank line. Run it after the ten `plot_mapbiomas_landcover.py` runs above.
 Writes `out/figures/mapbiomas_landcover_grid_5x2.*` (PNG at 300 dpi and SVG).
 
 ```bash
@@ -308,7 +321,7 @@ territory against any subset of the log. `--ti` restricts the run. Writes
 | `scripts/plot_funai_map.py` | Figure: territories over the state, focus territories highlighted. |
 | `scripts/ms_map_base.py` | Shared map base for the three map figures: boundary, polygon layers, colours, label offsets, representative-point anchor. No figure of its own. |
 | `scripts/plot_conflict_bubble_map.py` | Figure: bubble map per focus territory, from Chapter I cases (`--source cases`) or whole-report mentions (`--source mentions`). |
-| `scripts/plot_conflict_bubble_map_all.py` | Figure: bubble map of all 46 heatmap labels, numbered and keyed, the 26 without a polygon listed below. |
+| `scripts/plot_conflict_bubble_map_all.py` | Figure: bubble map of all 41 heatmap labels, numbered and keyed, the 21 without a polygon listed below. |
 | `scripts/plot_mapbiomas_landcover.py` | Figure + cache CSV: MapBiomas C11 land-cover share per group, 1985-2025, one territory per run. |
 | `scripts/plot_mapbiomas_grid.py` | Figure: the ten MapBiomas land-cover charts as one 5x2 grid, from the cache CSVs. |
 | `scripts/extract_territory_mentions.py` | Whole-report scan for the ten focus territories, every chapter: `data/derived/cimi_mentions_focus_territories.csv` plus one CSV per territory. |
@@ -325,7 +338,7 @@ changing its script and re-running it.
 | `out/figures/cimi_kaiowa_conflict_heatmap_focus_territories.*` | `plot_conflict_heatmap.py` | The same heatmap restricted to the ten focus territories |
 | `out/figures/cimi_kaiowa_conflict_bubble_map.*` | `plot_conflict_bubble_map.py` | Bubble map of the ten focus territories, Chapter I cases |
 | `out/figures/cimi_kaiowa_mentions_bubble_map.*` | `plot_conflict_bubble_map.py --source mentions` | Bubble map of the ten focus territories, mentions across every chapter |
-| `out/figures/cimi_kaiowa_conflict_bubble_map_all.*` | `plot_conflict_bubble_map_all.py` | Bubble map of all 46 heatmap labels, numbered and keyed, unplaced labels listed |
+| `out/figures/cimi_kaiowa_conflict_bubble_map_all.*` | `plot_conflict_bubble_map_all.py` | Bubble map of all 41 heatmap labels, numbered and keyed, unplaced labels listed |
 | `out/figures/funai_kaiowa_ms_map.*` | `plot_funai_map.py` | FUNAI Kaiowá territories over the state boundary, focus territories in blue |
 | `out/figures/cimi_kaiowa_conflict_types_wordcloud.*` | `plot_conflict_wordcloud.py` | Word cloud of the conflict-type-minor labels |
 | `out/figures/cimi_kaiowa_occupation_share.*` | `plot_occupation_lollipop.py` | Share of each territory the community occupies, from the CIMI 2020 report |

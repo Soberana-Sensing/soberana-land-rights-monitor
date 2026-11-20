@@ -59,8 +59,33 @@ cimi_variants:
   PYELLITO KUE: IGUATEMIPEGUA I
   NHU VERA: NU VERA
   PAKURITY (MS): PACURITY
+
+  # Spellings swept on 2026-11-19 against the 209 Kaiowá-MS cases. CIMI reused
+  # three names for the same places across report years:
+  # - Amambai: the reserve, and the tekoha Guapoy retomada inside/claimed from
+  #   it. The 2021-2025 cases are all about Guapoy, so AMAMBAI, AMAMBAI (ANTIGA
+  #   GUAPOY) and GUAPOY are one territory in CIMI's own reading.
+  # - Laranjeira Nhanderu: the 2011-2016 name, then folded into the
+  #   Brilhantepégua basin with Boqueirão from 2019 on.
+  "AMABAI (ANTIGA GUAPOY)": AMAMBAI
+  AMAMBAI (ANTIGA GUAPOY): AMAMBAI
+  GUAPOY: AMAMBAI
+  BOQUEIRAO: LARANJEIRA NHANDERU E BOQUEIRAO (BRILHANTEPEGUA)
+  LARANJEIRA NHANDERU: LARANJEIRA NHANDERU E BOQUEIRAO (BRILHANTEPEGUA)
   "PANAMBI LAGOA RICA (ITAY, GUYRA KAMBIY, GUAAROKA, YVY AJERE, PYKYXYIN, KURUPAITY, TAJASU IGUA)": PANAMBI (LAGOA RICA)
   YPOI/TRIUNFO: YPOI E TRIUNFO
+
+# One CIMI Chapter I record can name two territories; CIMI prints a single
+# record when one article covers both, e.g. the 2022 aerial pesticide spraying
+# in Guyraroka and Panambi-Lagoa Rica. The record is real in both, so it
+# expands to one row per territory (the raw `TI` column keeps the printed
+# spelling). This is the only deliberate double count: 209 printed cases become
+# 210 rows. Guyraroka and Panambi-Lagoa Rica are separate territories, so the
+# combined label is never merged into one name.
+cimi_multi:
+  GUYRAROKA, PANAMBI LAGOA RICA:
+    - GUYRAROKA
+    - PANAMBI (LAGOA RICA)
 
 # FUNAI terrai_nom (after norm_ti) -> canonical CIMI label. FUNAI names absent
 # here are either already identical to the canonical label or have no CIMI
@@ -134,9 +159,14 @@ notes:
     spellings into their TI; PAKURITY (MS) into PACURITY; NHU VERA into NU VERA;
     YPOI/TRIUNFO into YPOI E TRIUNFO; the Ava'ete 01 / Tekoha Ava'ete spellings
     into AVAETE I. This took the heatmap from 65 to 46 rows."
-  - "Left unmerged on 2026-11-18, needs a reading of the case text: AMAMBAI
-    (ANTIGA GUAPOY) and GUAPOY against AMAMBAI (the 2022-2025 cases are about
-    the Guapoy Mirim Tujury retomada, not the reserve itself); MARANGATU (one
-    2009 case) against NHANDERU MARANGATU; BOQUEIRAO and LARANJEIRA NHANDERU
-    against LARANJEIRA NHANDERU E BOQUEIRAO (BRILHANTEPEGUA); NU PORA against
-    PASSO PIRAJU; YVU VERA against NU VERA."
+  - "Merged on 2026-11-19 after reading the case text: AMAMBAI (ANTIGA GUAPOY)
+    and GUAPOY into AMAMBAI (every 2021-2025 case is the tekoha Guapoy
+    retomada, taken from the reserve); LARANJEIRA NHANDERU and BOQUEIRAO into
+    LARANJEIRA NHANDERU E BOQUEIRAO (BRILHANTEPEGUA), the composite CIMI used
+    for the same tekohas from 2019 on. GUYRAROKA, PANAMBI LAGOA RICA is NOT a
+    merge: they are two territories and one printed record, so it expands to
+    one row in each (cimi_multi)."
+  - "Left unmerged on 2026-11-18, needs a reading of the case text: MARANGATU
+    (one 2009 case) against NHANDERU MARANGATU; NU PORA against PASSO PIRAJU;
+    YVU VERA against NU VERA; GUYRA KAMBYI (a tekoha inside Panambi-Lagoa Rica)
+    and the other tekoha names against their parent territory."

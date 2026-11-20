@@ -21,9 +21,11 @@ def norm_ti(value: object) -> object:
     """Normalise any TI spelling to a matching key. Non-strings pass through."""
     if not isinstance(value, str):
         return value
-    s = unicodedata.normalize("NFKD", value).encode("ascii", "ignore").decode()
+    # dashes and apostrophes become spaces BEFORE the ASCII fold, which would
+    # otherwise drop an en dash and glue the two words together (Panambi–Lagoa)
+    s = re.sub(r"[-'\u2019\u2013\u2014]", " ", value)
+    s = unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode()
     s = s.upper()
-    s = re.sub(r"[-'\u2019\u2013\u2014]", " ", s)   # hyphens, en/em dashes, apostrophes become spaces
     s = re.sub(r"\s+", " ", s)
     return s.strip()
 
@@ -33,6 +35,7 @@ with CONVENTIONS_FILE.open(encoding="utf-8") as fh:
 
 FOCUS_TERRITORIES: list[str] = _CONVENTIONS["focus_territories"]
 CIMI_VARIANTS: dict[str, str] = _CONVENTIONS["cimi_variants"]
+CIMI_MULTI: dict[str, list[str]] = _CONVENTIONS.get("cimi_multi", {}) or {}
 FUNAI_TO_CIMI: dict[str, str] = _CONVENTIONS["funai_to_cimi"]
 MENTION_PATTERNS: dict[str, dict] = _CONVENTIONS.get("mention_patterns", {})
 MS_CUES: str = _CONVENTIONS.get("ms_cues", r"\bms\b")
@@ -41,6 +44,22 @@ MS_CUES: str = _CONVENTIONS.get("ms_cues", r"\bms\b")
 def cimi_ti(series: pd.Series) -> pd.Series:
     """Canonical CIMI labels from the raw CIMI TI column."""
     return series.map(norm_ti).replace(CIMI_VARIANTS)
+
+
+def split_multi_labels(df: pd.DataFrame, col: str = "TI_CLEAN") -> pd.DataFrame:
+    """Expand a label naming two territories into one row per territory.
+
+    CIMI prints a single Chapter I record when one article covers two
+    territories. The record is real in both, so each gets a row; the raw `TI`
+    column keeps the printed spelling. See `cimi_multi` in the YAML.
+    """
+    if not CIMI_MULTI or col not in df.columns:
+        return df
+    df = df.copy()
+    df["_labels"] = df[col].map(lambda v: CIMI_MULTI.get(v, [v]))
+    df = df.explode("_labels", ignore_index=True)
+    df[col] = df.pop("_labels")
+    return df
 
 
 def funai_ti(series: pd.Series) -> pd.Series:

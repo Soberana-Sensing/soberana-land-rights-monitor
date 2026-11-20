@@ -75,14 +75,33 @@ LABELS = {
 }
 GIDS = list(GROUPS)
 
-# FUNAI legal acts drawn as dashed vertical lines, one per stage and colour.
+# FUNAI legal acts drawn as vertical lines, one per stage and colour.
 # (stage key in the inventory column `data_<key>`, English label, colour). The
-# colours are dark and none matches a stack fill above.
+# colours are dark and none matches a stack fill above. Ratification is the
+# final act, so it gets a solid line; the earlier stages are dashed with an
+# even on/off pattern.
 STAGE_LINES = [
     ("delimitada", "delimitation", "#24479b"),
     ("declarada", "declaration", "#e07b00"),
     ("homologada", "ratification", "#8e2ba2"),
 ]
+DASHED = (0, (4, 2.5))
+
+# matplotlib rescales dash patterns by linewidth, which leaves one long and
+# one short dash in a short legend sample. Keep the pattern as written.
+plt.rcParams["lines.scale_dashes"] = False
+
+
+def stage_linestyle(stage: str):
+    """Ratification is solid; delimitation and declaration are evenly dashed."""
+    return "solid" if stage == "homologada" else DASHED
+
+
+def stage_handles() -> list[mlines.Line2D]:
+    """Legend proxies for the legal-act lines, matching what the axes draw."""
+    return [mlines.Line2D([], [], color=colour, linewidth=1.8,
+                          linestyle=stage_linestyle(stage), label=english)
+            for stage, english, colour in STAGE_LINES]
 
 
 def slug(name: str) -> str:
@@ -143,20 +162,21 @@ def cimi_occupied(ti_clean: str) -> tuple[float, float, float, str] | None:
     if not shares.exists():
         return None
     occ = pd.read_csv(shares)
-    key = norm_ti(ti_clean)
-    hit = occ.loc[occ["territory"].map(norm_ti).str.startswith(key)]
+    key = ti_names.CIMI_VARIANTS.get(norm_ti(ti_clean), norm_ti(ti_clean))
+    hit = occ.loc[occ["territory"].map(norm_ti)
+                  .replace(ti_names.CIMI_VARIANTS).str.startswith(key)]
     if hit.empty:
         return None
     r = hit.sort_values("year").iloc[0]
     return float(r["occupied_ha"]), float(r["area_ha"]), float(r["share_pct"]), str(r["year"])
 
 
-def legal_acts(ti_clean: str) -> tuple[list[tuple[str, str, str, int]], str]:
+def legal_acts(ti_clean: str) -> tuple[list[tuple[str, str, str, str, int]], str]:
     """Recorded FUNAI legal acts and the current stage, from the focus inventory.
 
-    Returns ([(english label, colour, act document, year), ...], fase_ti). One
-    entry per stage that has a date; a stage with no date has no line. The
-    current stage comes from `fase_ti`, never from the dates.
+    Returns ([(stage key, english label, colour, act document, year), ...],
+    fase_ti). One entry per stage that has a date; a stage with no date has no
+    line. The current stage comes from `fase_ti`, never from the dates.
     """
     inventory = ROOT / "data/derived/funai_focus_territories_inventory.csv"
     if not inventory.exists():
@@ -174,19 +194,21 @@ def legal_acts(ti_clean: str) -> tuple[list[tuple[str, str, str, int]], str]:
             continue
         document = r.get(f"tit_{stage}")
         document = document if isinstance(document, str) else ""
-        acts.append((english, colour, document, int(date.year)))
+        acts.append((stage, english, colour, document, int(date.year)))
     phase = r.get("fase_ti", "")
     return acts, phase if isinstance(phase, str) else ""
 
 
 def add_stage_lines(ax: plt.Axes, ti_clean: str) -> tuple[list, str]:
-    """One coloured dashed line per recorded legal act. Returns legend handles."""
+    """One coloured line per recorded legal act. Returns legend handles."""
     acts, phase = legal_acts(ti_clean)
     handles = []
-    for english, colour, document, year in acts:
-        ax.axvline(year, color=colour, linewidth=1.8, linestyle=(0, (6, 3)), zorder=5)
+    for stage, english, colour, document, year in acts:
+        ax.axvline(year, color=colour, linewidth=1.8,
+                   linestyle=stage_linestyle(stage), zorder=5)
         handles.append(mlines.Line2D([], [], color=colour, linewidth=1.8,
-                                     linestyle=(0, (6, 3)), label=english))
+                                     linestyle=stage_linestyle(stage),
+                                     label=english))
         print(f"legal act: {english} {year} ({document})")
     if not acts:
         print(f"no FUNAI legal-act date for {ti_clean}; no lines")
@@ -228,13 +250,13 @@ def plot(df: pd.DataFrame, ti_clean: str, out_dir: Path) -> None:
 
     handles, labels_ = ax.get_legend_handles_labels()
     leg_class = ax.legend(handles[::-1], labels_[::-1], loc="upper left",
-                          bbox_to_anchor=(1.02, 1.0), title=f"Class ({YEARS[-1]})",
+                          bbox_to_anchor=(1.02, 1.0), title="Legend",
                           fontsize=9)
     leg_stage = None
     if stage_handles:
         ax.add_artist(leg_class)
         leg_stage = ax.legend(handles=stage_handles, loc="lower left",
-                              bbox_to_anchor=(1.02, 0.0), title="FUNAI legal act",
+                              bbox_to_anchor=(1.02, 0.0), title="Legal status",
                               fontsize=9)
     ax.set_axisbelow(True)
     fig.tight_layout()

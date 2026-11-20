@@ -8,9 +8,11 @@ Output: out/figures/mapbiomas_landcover_grid_5x2.png/.svg
 5 rows x 2 cols, one stacked-area panel per focus territory, in the
 FOCUS_TERRITORIES order from config/ti_names.yaml. Style matches
 plot_mapbiomas_landcover.py: same groups, colors and white boundary lines,
-plus one coloured dashed line per FUNAI legal act recorded for that territory
-and the current stage in each panel title. One shared legend for the classes
-and a second for the legal acts.
+plus one coloured line per FUNAI legal act recorded for that territory
+(ratification solid, the earlier stages dashed) and the share of the territory
+the community occupies according to CIMI (2020) in each panel title. Every
+panel carries year ticks (every 5 years). One shared legend for the classes,
+one for the legal status.
 
 No Earth Engine call: everything comes from the cache CSVs.
 """
@@ -19,13 +21,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import matplotlib.lines as mlines
 import matplotlib.pyplot as plt
 import pandas as pd
+from matplotlib.patches import Patch
 
 import ti_names
-from plot_mapbiomas_landcover import (COLORS, GIDS, GROUPS, LABELS, STAGE_LINES,
-                                     YEARS, legal_acts, slug)
+from plot_mapbiomas_landcover import (COLORS, GIDS, LABELS, YEARS, cimi_occupied,
+                                     legal_acts, slug, stage_handles,
+                                     stage_linestyle)
 
 ROOT = Path(__file__).resolve().parents[1]
 DERIVED = ROOT / "data/derived"
@@ -43,14 +46,21 @@ def panel(ax: plt.Axes, df: pd.DataFrame, ti_clean: str) -> None:
         ax.plot(YEARS, cumulative[g], color="white", linewidth=1.0)
     ax.set_xlim(YEARS[0], YEARS[-1])
     ax.set_ylim(0, wide.sum(axis=1).max())
-    ax.tick_params(labelsize=8)
+    ax.set_xticks(range(YEARS[0], YEARS[-1] + 1, 5))
+    ax.tick_params(labelsize=8, labelbottom=True)
+    ax.set_xlabel("Year", fontsize=8)
+    ax.set_ylabel("Hectares (ha)", fontsize=8)
 
-    acts, phase = legal_acts(ti_clean)
-    for _, colour, _, year in acts:
-        ax.axvline(year, color=colour, linewidth=1.2, linestyle=(0, (6, 3)), zorder=5)
+    acts, _phase = legal_acts(ti_clean)
+    for stage, _, colour, _, year in acts:
+        ax.axvline(year, color=colour, linewidth=1.2,
+                   linestyle=stage_linestyle(stage), zorder=5)
 
-    stage_text = f" (current stage: {ti_names.stage_en(phase)})" if phase else ""
-    ax.set_title(f"{ti_clean.title()}{stage_text}", fontsize=10, fontweight="bold")
+    cimi = cimi_occupied(ti_clean)
+    occupied_text = (f" — occupied {cimi[2]:.2f}% (CIMI {cimi[3]})"
+                     if cimi else "")
+    ax.set_title(f"{ti_clean.title()}{occupied_text}", fontsize=10,
+                 fontweight="bold")
 
 
 def main() -> None:
@@ -59,7 +69,7 @@ def main() -> None:
         raise SystemExit(f"{len(territories)} focus territories, grid is "
                          f"{NROWS}x{NCOLS}={NROWS * NCOLS}; update the script")
 
-    fig, axes = plt.subplots(NROWS, NCOLS, figsize=(13, 17),
+    fig, axes = plt.subplots(NROWS, NCOLS, figsize=(13, 18),
                              sharex=True, sharey=False)
     for ax, ti in zip(axes.flat, territories):
         csv = DERIVED / f"mapbiomas_landcover_{slug(ti).lower()}.csv"
@@ -69,23 +79,20 @@ def main() -> None:
         df = pd.read_csv(csv)
         panel(ax, df, ti)
 
-    # shared legend: one labeled Patch per group, from a proxy handle
-    from matplotlib.patches import Patch
+    # shared legends: one labelled Patch per land-cover group, then the legal
+    # status lines. The second legend sits a line below the first.
     legend = [Patch(facecolor=COLORS[g], label=LABELS[g]) for g in GIDS]
-    fig.legend(handles=legend, loc="upper center", bbox_to_anchor=(0.5, 0.945),
-               ncol=4, fontsize=10, title=f"Class ({YEARS[-1]})",
-               title_fontsize=11, frameon=False)
-    stage_legend = [mlines.Line2D([], [], color=colour, linewidth=1.8,
-                                  linestyle=(0, (6, 3)), label=english)
-                    for _, english, colour in STAGE_LINES]
-    fig.legend(handles=stage_legend, loc="upper center", bbox_to_anchor=(0.5, 0.905),
-               ncol=3, fontsize=10, title="FUNAI legal act", title_fontsize=10,
+    fig.legend(handles=legend, loc="upper center", bbox_to_anchor=(0.5, 0.948),
+               ncol=4, fontsize=10, title="Legend", title_fontsize=11,
                frameon=False)
-    fig.suptitle("Land cover in the focus Guarani and Kaiowá territories\n"
-                 "MapBiomas Collection 11, 1985-2025 (hectares inside each territory); "
-                 "dashed lines: FUNAI legal acts, coloured by stage",
-                 fontsize=13, y=0.995)
-    fig.tight_layout(rect=(0, 0, 1, 0.885))
+    fig.legend(handles=stage_handles(), loc="upper center",
+               bbox_to_anchor=(0.5, 0.888), ncol=3, fontsize=10,
+               title="Legal status", title_fontsize=10, frameon=False)
+    fig.suptitle("LULC per delimited territory\n"
+                 "MapBiomas Collection 11, 1985-2025 (hectares inside each territory)\n"
+                 "solid line: ratification; dashed lines: delimitation and declaration",
+                 fontsize=12, y=0.995)
+    fig.tight_layout(rect=(0, 0, 1, 0.875))
 
     FIGS.mkdir(parents=True, exist_ok=True)
     for ext in ("png", "svg"):

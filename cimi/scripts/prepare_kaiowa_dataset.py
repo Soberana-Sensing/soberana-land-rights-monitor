@@ -49,6 +49,10 @@ def main() -> None:
     kaiowa_ms = kaiowa.loc[kaiowa["state"].astype("string").str.contains("MS", case=False, na=False)].copy()
     kaiowa_ms["TI_CLEAN"] = cimi_ti(kaiowa_ms["TI"])
 
+    # A record naming two territories counts once in each; see cimi_multi.
+    ms_rows = ti_names.split_multi_labels(ms_rows)
+    kaiowa_ms = ti_names.split_multi_labels(kaiowa_ms)
+
     inventory = pd.read_csv(INVENTORY)
     inventory["TI_CLEAN"] = funai_ti(inventory["nome_ti"])
 
